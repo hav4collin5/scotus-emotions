@@ -1,0 +1,61 @@
+import json
+import argparse
+import nltk
+from nltk.tokenize import word_tokenize
+
+nltk.download('punkt')
+
+def load_chunk_opinions(input_file, start_idx, end_idx):
+    """Load a specific chunk of opinions from a JSONL file."""
+    opinions = []
+    with open(input_file, 'r') as f:
+        for i, line in enumerate(f):
+            if i < start_idx:
+                continue
+            if i >= end_idx:
+                break
+            opinions.append(json.loads(line))
+    
+    return opinions
+
+def tokenize_opinions(opinions):
+    """Tokenize text from opinions while preserving metadata."""
+    tokenized_results = []
+    
+    for opinion in opinions:
+        doc_id = opinion.get('id', 'UNKNOWN')
+        casebody = opinion.get('casebody', {}).get('opinions', [])
+        
+        for entry in casebody:
+            opinion_type = entry.get('type', 'UNKNOWN')
+            text = entry.get('text', '')
+            
+            tokens = word_tokenize(text)
+            
+            tokenized_results.append({
+                'document_id': doc_id,
+                'opinion_type': opinion_type,
+                'tokens': tokens
+            })
+    
+    return tokenized_results
+
+def save_tokenized_output(output_file, tokenized_data):
+    """Save the tokenized opinions to a JSON file."""
+    with open(output_file, 'w') as f:
+        json.dump(tokenized_data, f, indent=4)
+
+def main(input_file, output_file, start_idx, end_idx):
+    opinions = load_chunk_opinions(input_file, start_idx, end_idx)
+    tokenized_data = tokenize_opinions(opinions)
+    save_tokenized_output(output_file, tokenized_data)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', type=str, required=True, help='Path to JSONL file with opinions')
+    parser.add_argument('--output', type=str, required=True, help='Path to save tokenized JSON output')
+    parser.add_argument('--start', type=int, required=True, help='Start index for processing')
+    parser.add_argument('--end', type=int, required=True, help='End index for processing')
+    
+    args = parser.parse_args()
+    main(args.input, args.output, args.start, args.end)
